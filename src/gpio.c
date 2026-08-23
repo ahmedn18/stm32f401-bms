@@ -36,12 +36,12 @@ void GPIO_Init(void) {
     CLEAR_BIT(GPIOA_PUPDR, 4);
     CLEAR_BIT(GPIOA_PUPDR, 5);
 
-    // PA4 is the battery input (ADC1_IN4) : analog mode is MODER = 11
-    SET_BIT(GPIOA_MODER, 8);
-    SET_BIT(GPIOA_MODER, 9);
+    // PA3 is the battery input (ADC1_IN3) : analog mode is MODER = 11
+    SET_BIT(GPIOA_MODER, 6);
+    SET_BIT(GPIOA_MODER, 7);
     // an analog input must have no pull-up / pull-down or it skews the reading
-    CLEAR_BIT(GPIOA_PUPDR, 8);
-    CLEAR_BIT(GPIOA_PUPDR, 9);
+    CLEAR_BIT(GPIOA_PUPDR, 6);
+    CLEAR_BIT(GPIOA_PUPDR, 7);
 }
 
 void GPIO_SetLeds(unsigned int number) {
