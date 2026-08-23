@@ -1,4 +1,18 @@
-# define SET_BIT(REG,BIT)     (REG |= (1 << BIT))
-# define CLEAR_BIT(REG,BIT)   (REG &= ~(1 << BIT))
-# define TOGGLE_BIT(REG,BIT)  (REG ^= (1 << BIT))
-# define GET_BIT(REG,BIT)     ((REG & (1 << BIT)) ? 1 : 0)
+#ifndef bit_math.h
+#define bit_math.h
+void SET_BIT(volatile unsigned char *REG, unsigned char BIT){
+   *REG |= (1 << BIT);
+}
+
+void CLEAR_BIT(volatile unsigned char *REG, unsigned char BIT){
+   *REG &= ~(1 << BIT);
+}
+
+void TOGGLE_BIT(volatile unsigned char *REG, unsigned char BIT){
+   *REG ^= (1 << BIT);
+}
+
+unsigned char READ_BIT(volatile unsigned char *REG, unsigned char BIT){
+   return ((*REG >> BIT) & 1);
+}
+#endif
