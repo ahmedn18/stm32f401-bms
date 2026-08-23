@@ -2,6 +2,10 @@
 #include "stm32f401.h"
 #include "bit_math.h"
 
+// same reasoning as the RCC waits : a simulator that does not drive EOC would
+// otherwise trap the main loop here forever
+#define ADC_TIMEOUT 100000U
+
 void ADC_Init(uint8_t channel) {
     // 12 bit resolution , CR1 RES = 00
     ADC1_CR1 &= ~(0x3U << 24);
@@ -32,7 +36,13 @@ void ADC_Init(uint8_t channel) {
 }
 
 uint16_t ADC_Read(void) {
-    while (GET_BIT(ADC1_SR, 1) == 0U) { /* wait for EOC */ }
+    uint32_t timeout = ADC_TIMEOUT;
+    while (GET_BIT(ADC1_SR, 1) == 0U && timeout != 0U) {
+        timeout--; // wait for EOC
+    }
+    if (timeout == 0U) {
+        return 0U; // the conversion never finished
+    }
     return (uint16_t)(ADC1_DR & 0x0FFFU); // reading DR clears EOC
 }
 
