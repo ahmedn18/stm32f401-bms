@@ -1,5 +1,20 @@
 #include "rcc.h"
 #include "stm32f401.h"
+
+// how long we are willing to spin on a status bit before giving up. On real
+// silicon these flags come up in microseconds; a simulator that does not model
+// the PLL or the flash interface would otherwise spin here forever and main()
+// would never be reached.
+#define RCC_TIMEOUT 100000U
+
+static unsigned int wait_for_bit(volatile unsigned int *reg, unsigned char bit) {
+    unsigned int timeout = RCC_TIMEOUT;
+    while ((((*reg) >> bit) & 1U) == 0U && timeout != 0U) {
+        timeout--;
+    }
+    return timeout; // zero means it timed out
+}
+
 void rcc_init(void) {
     //for Gpio clock enable
     SET_BIT(RCC_AHB1ENBR, 0); //enable clock for GPIOA
@@ -32,26 +47,38 @@ void rcc_init(void) {
     RCC_PLLCFGR |= (336 << 6); // set plln = 336 
     //also pll must be enabled for the systmen to work
     SET_BIT(RCC_CR , 24);
-    while (!GET_BIT(RCC_CR, 25));//we must wait until it is high first , this is PLLRDY: Main PLL (PLL) clock ready flag
-    //now from data sheet the frequency on APB1 is 42 MHz , so we need a prescalar 2
-    SET_BIT(RCC_CFGR, 12);
-    CLEAR_BIT(RCC_CFGR,11); 
-    CLEAR_BIT(RCC_CFGR, 10);
-    //before raising SYSCLK to 84 MHz the core has to be able to keep up with it:
-    //1) the regulator must be on scale 1 , scale 2 only goes up to 60 MHz
-    SET_BIT(RCC_APB1ENR, 28); //PWR peripheral clock enable
-    SET_BIT(PWR_CR, 14);      //VOS = scale 1
-    //2) the flash is slower than the core , so it needs wait states
-    //   at 2.7-3.6V : 0WS up to 30MHz , 1WS up to 64MHz , 2WS up to 90MHz
-    FLASH_ACR &= ~(0xFU << 0);
-    FLASH_ACR |= (2U << 0);   //LATENCY = 2 wait states for 84 MHz
-    SET_BIT(FLASH_ACR, 8);    //prefetch enable
-    SET_BIT(FLASH_ACR, 9);    //instruction cache enable
-    SET_BIT(FLASH_ACR, 10);   //data cache enable
-    while ((FLASH_ACR & 0xFU) != 2U); //the latency is only live once flash acknowledges it
 
-    //the pll must be selected as system clock by code
-    SET_BIT(RCC_CFGR, 1);
-    CLEAR_BIT(RCC_CFGR, 0);
-    while (((RCC_CFGR >> 2) & 0x3U) != 0x2U) { /* wait until PLL is used as system clock */ }
+    if (wait_for_bit(&RCC_CR, 25) != 0U) { //PLLRDY: Main PLL clock ready flag
+        //now from data sheet the frequency on APB1 is 42 MHz , so we need a prescalar 2
+        SET_BIT(RCC_CFGR, 12);
+        CLEAR_BIT(RCC_CFGR, 11);
+        CLEAR_BIT(RCC_CFGR, 10);
+
+        //before raising SYSCLK to 84 MHz the core has to be able to keep up with it:
+        //1) the regulator must be on scale 1 , scale 2 only goes up to 60 MHz
+        SET_BIT(RCC_APB1ENR, 28); //PWR peripheral clock enable
+        SET_BIT(PWR_CR, 14);      //VOS = scale 1
+        //2) the flash is slower than the core , so it needs wait states
+        //   at 2.7-3.6V : 0WS up to 30MHz , 1WS up to 64MHz , 2WS up to 90MHz
+        FLASH_ACR &= ~(0xFU << 0);
+        FLASH_ACR |= (2U << 0);   //LATENCY = 2 wait states for 84 MHz
+        SET_BIT(FLASH_ACR, 8);    //prefetch enable
+        SET_BIT(FLASH_ACR, 9);    //instruction cache enable
+        SET_BIT(FLASH_ACR, 10);   //data cache enable
+
+        unsigned int timeout = RCC_TIMEOUT;
+        while ((FLASH_ACR & 0xFU) != 2U && timeout != 0U) {
+            timeout--; //the latency is only live once flash acknowledges it
+        }
+
+        //the pll must be selected as system clock by code
+        SET_BIT(RCC_CFGR, 1);
+        CLEAR_BIT(RCC_CFGR, 0);
+        timeout = RCC_TIMEOUT;
+        while (((RCC_CFGR >> 2) & 0x3U) != 0x2U && timeout != 0U) {
+            timeout--; //wait until PLL is actually used as system clock
+        }
+    }
+    //if the PLL never locked we stay on the 16 MHz HSI. Slower than intended,
+    //but the GPIO and ADC clocks are already on so the board still works.
 }
