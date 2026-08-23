@@ -37,8 +37,8 @@ void rcc_init(void) {
     SET_BIT(RCC_CFGR, 12);
     CLEAR_BIT(RCC_CFGR,11); 
     CLEAR_BIT(RCC_CFGR, 10);
-    //the pll must me selected as system clock by code
-    SET_BIT(RCC_CFGR ,1);
-    CLEAR_BIT(RCC_CFGR,0);
-   
-  
+    //the pll must be selected as system clock by code
+    SET_BIT(RCC_CFGR, 1);
+    CLEAR_BIT(RCC_CFGR, 0);
+    while (((RCC_CFGR >> 2) & 0x3U) != 0x2U) { /* wait until PLL is used as system clock */ }
+}
