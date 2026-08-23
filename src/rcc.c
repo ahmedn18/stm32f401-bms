@@ -37,6 +37,19 @@ void rcc_init(void) {
     SET_BIT(RCC_CFGR, 12);
     CLEAR_BIT(RCC_CFGR,11); 
     CLEAR_BIT(RCC_CFGR, 10);
+    //before raising SYSCLK to 84 MHz the core has to be able to keep up with it:
+    //1) the regulator must be on scale 1 , scale 2 only goes up to 60 MHz
+    SET_BIT(RCC_APB1ENR, 28); //PWR peripheral clock enable
+    SET_BIT(PWR_CR, 14);      //VOS = scale 1
+    //2) the flash is slower than the core , so it needs wait states
+    //   at 2.7-3.6V : 0WS up to 30MHz , 1WS up to 64MHz , 2WS up to 90MHz
+    FLASH_ACR &= ~(0xFU << 0);
+    FLASH_ACR |= (2U << 0);   //LATENCY = 2 wait states for 84 MHz
+    SET_BIT(FLASH_ACR, 8);    //prefetch enable
+    SET_BIT(FLASH_ACR, 9);    //instruction cache enable
+    SET_BIT(FLASH_ACR, 10);   //data cache enable
+    while ((FLASH_ACR & 0xFU) != 2U); //the latency is only live once flash acknowledges it
+
     //the pll must be selected as system clock by code
     SET_BIT(RCC_CFGR, 1);
     CLEAR_BIT(RCC_CFGR, 0);
