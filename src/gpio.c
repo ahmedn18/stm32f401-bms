@@ -27,13 +27,21 @@ void GPIO_Init(void) {
     CLEAR_BIT(GPIOA_OTYPER, 1);
     CLEAR_BIT(GPIOA_OTYPER, 2);
 
-    // pulling down the pins to avoid floating state
+    // no pull-up / pull-down : PA0-PA2 are push-pull outputs, they are driven
+    // at both levels so they can never float
     CLEAR_BIT(GPIOA_PUPDR, 0);
     CLEAR_BIT(GPIOA_PUPDR, 1);
     CLEAR_BIT(GPIOA_PUPDR, 2);
     CLEAR_BIT(GPIOA_PUPDR, 3);
     CLEAR_BIT(GPIOA_PUPDR, 4);
     CLEAR_BIT(GPIOA_PUPDR, 5);
+
+    // PA4 is the battery input (ADC1_IN4) : analog mode is MODER = 11
+    SET_BIT(GPIOA_MODER, 8);
+    SET_BIT(GPIOA_MODER, 9);
+    // an analog input must have no pull-up / pull-down or it skews the reading
+    CLEAR_BIT(GPIOA_PUPDR, 8);
+    CLEAR_BIT(GPIOA_PUPDR, 9);
 }
 
 void GPIO_SetLeds(unsigned int number) {
